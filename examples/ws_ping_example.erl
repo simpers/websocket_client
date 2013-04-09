@@ -37,12 +37,7 @@ websocket_handle({text, Msg}, _ConnState, State) ->
     BinInt = list_to_binary(integer_to_list(State)),
     Reply = {text, <<"hello, this is message #", BinInt/binary >>},
     io:format("Replying: ~p~n", [Reply]),
-    {reply, Reply, State + 1};
-
-%% TODO Remove this catch all case
-websocket_handle(Foo, _CS, S) ->
-    io:format("UNKNOWN RECEIVE: ~p~n", [Foo]),
-    {close, <<>>, S}.
+    {reply, Reply, State + 1}.
 
 websocket_info(start, _ConnState, State) ->
     {reply, {text, <<"erlang message received">>}, State}.
