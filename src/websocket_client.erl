@@ -4,7 +4,8 @@
 
 -export([
          start_link/3,
-         cast/2
+         cast/2,
+         call/2
         ]).
 
 -export([ws_client_init/6]).
@@ -27,6 +28,13 @@ start_link(URL, Handler, Args) ->
 cast(Client, Frame) ->
     Client ! {cast, Frame},
     ok.
+
+-spec call(Client :: pid(), Frame :: websocket_req:frame()) ->
+    {ok, websocket_req:frame()} | {error, term()}.
+call(Client, Frame) ->
+    Client ! {call, Frame}.
+
+    
 
 %% @doc Create socket, execute handshake, and enter loop
 -spec ws_client_init(Handler :: module(), Protocol :: websocket_req:protocol(),
@@ -146,6 +154,22 @@ websocket_loop(WSReq, HandlerState, Buffer) ->
         {cast, Frame} ->
             ok = Transport:send(Socket, encode_frame(Frame)),
             websocket_loop(WSReq, HandlerState, Buffer);
+        {call, Frame} ->
+            ok = Transport:send(Socket, encode_frame(Frame)),
+            %% Receive response or timeout... ?
+            %% TODO: Why would we use keepalive here?
+            Response = Transport:recv(Socket, 0),
+            %% {ok, Packet} | {error, Reason}
+
+            
+
+            %% TODO Probably need something here ;)
+            RespFrame = Response,
+
+            HandlerResponse = Handler:websocket_handle(
+                    RespFrame, WSReq, HandlerState),
+
+            handle_response(WSReq, HandlerResponse, Buffer);
         {_Closed, Socket} ->
             websocket_close(WSReq, HandlerState, {remote, closed});
         {_TransportType, Socket, Data} ->
