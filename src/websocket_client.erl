@@ -32,7 +32,13 @@ cast(Client, Frame) ->
 -spec call(Client :: pid(), Frame :: websocket_req:frame()) ->
     {ok, websocket_req:frame()} | {error, term()}.
 call(Client, Frame) ->
-    Client ! {call, Frame}.
+    Client ! {call, self(), Ref = erlang:make_ref(), Frame},
+    receive
+        {reply, Ref, Reply} ->
+            Reply
+    after 5000 ->
+        {timeout, Ref}
+    end.
 
     
 
@@ -158,20 +164,30 @@ websocket_loop(WSReq, HandlerState, Buffer) ->
         {cast, Frame} ->
             ok = Transport:send(Socket, encode_frame(Frame)),
             websocket_loop(WSReq, HandlerState, Buffer);
-        {call, Frame} ->
-            ok = Transport:send(Socket, encode_frame(Frame)),
-            %% Receive response or timeout... ?
-            %% TODO: Why would we use keepalive here?
-            Response = Transport:recv(Socket, 0),
-            %% {ok, Packet} | {error, Reason}
+        {call, From, Ref, Frame} ->
 
-            
+            ok = Transport:send(Socket, encode_frame(Frame)),
+
+            case Socket of
+                {sslsocket, _, _} ->
+                    ssl:setopts(Socket, [{active, once}]);
+                _ ->
+                    inet:setopts(Socket, [{active, once}])
+            end,
+
+            %% Receive response or timeout... ?
+            Response = Transport:recv(Socket, 0),
+
+            io:format("Response from ~s:recv/2: ~p~n", [Transport, Response]),
+            %% {ok, Packet} | {error, Reason}
 
             %% TODO Probably need something here ;)
             RespFrame = Response,
 
             HandlerResponse = Handler:websocket_handle(
                     RespFrame, WSReq, HandlerState),
+
+            io:format("HandlerResponse: ~p~n", [HandlerResponse]),
 
             handle_response(WSReq, HandlerResponse, Buffer);
         {_Closed, Socket} ->
