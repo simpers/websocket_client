@@ -37,15 +37,15 @@ test_text_frames(_) ->
     {ok, Pid} = ws_client:start_link(),
     %% Short message
     Short = short_msg(),
-    ws_client:send_text(Pid, Short),
+    ws_client:send(async, Pid, text, Short),
     {text, Short} = ws_client:recv(Pid),
     %% Payload length greater than 125 (actual 150).
     Medium = medium_msg(),
-    ws_client:send_text(Pid, Medium),
+    ws_client:send(async, Pid, text, Medium),
     {text, Medium} = ws_client:recv(Pid),
     %% Payload length greater than 65535
     Long = long_msg(),
-    ws_client:send_text(Pid, Long),
+    ws_client:send(async, Pid, text, Long),
     {text, Long} = ws_client:recv(Pid),
     ws_client:stop(Pid),
     ok.
@@ -54,15 +54,15 @@ test_binary_frames(_) ->
     {ok, Pid} = ws_client:start_link(),
     %% Short message
     Short = short_msg(),
-    ws_client:send_binary(Pid, Short),
+    ws_client:send(async, Pid, binary, Short),
     {binary, Short} = ws_client:recv(Pid),
     %% Payload length greater than 125 (actual 150).
     Medium = medium_msg(),
-    ws_client:send_binary(Pid, Medium),
+    ws_client:send(async, Pid, binary, Medium),
     {binary, Medium} = ws_client:recv(Pid),
     %% Payload length greater than 65535
     Long = long_msg(),
-    ws_client:send_binary(Pid, Long),
+    ws_client:send(async, Pid, binary, Long),
     {binary, Long} = ws_client:recv(Pid),
     ws_client:stop(Pid),
     ok.
@@ -71,13 +71,13 @@ test_control_frames(_) ->
     {ok, Pid} = ws_client:start_link(),
     %% Send ping with short message
     Short = short_msg(),
-    ws_client:send_ping(Pid, Short),
+    ws_client:send(async, Pid, ping, Short),
     {pong, Short} = ws_client:recv(Pid),
     %% Server will echo the ping as well
     {ping, Short} = ws_client:recv(Pid),
     {pong, Short} = ws_client:recv(Pid),
     %% Send ping without message
-    ws_client:send_ping(Pid, <<>>),
+    ws_client:send(async, Pid, ping, <<>>),
     {pong, <<>>} = ws_client:recv(Pid),
     ws_client:stop(Pid),
     ok.
