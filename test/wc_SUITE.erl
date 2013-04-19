@@ -20,7 +20,7 @@
 
 all() ->
     [
-     test_sync_send_failure,
+     %%test_sync_send_failure,
      test_sync_text_frames,
      test_sync_binary_frames,
      test_sync_control_frames,

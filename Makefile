@@ -1,4 +1,4 @@
-.PHONY: all clean
+.PHONY: all clean test
 
 all:
 	mkdir -p ebin
@@ -15,6 +15,6 @@ test-deps:
 test: test-deps
 	mkdir -p .ct_results
 	ct_run -pa test-deps/cowboy/ebin test-deps/cowboy/deps/ranch/ebin ebin \
-	-dir ct \
+	-dir test \
 	-logdir ./.ct_results \
-	-cover ct/websocket_client.coverspec
+	-cover test/websocket_client.coverspec
