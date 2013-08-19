@@ -132,16 +132,25 @@ websocket_handshake(WSReq) ->
     Transport = websocket_req:transport(WSReq),
     Socket =    websocket_req:socket(WSReq),
     Transport:send(Socket, Handshake),
-    {ok, HandshakeResponse} = receive_handshake(<<>>, Transport, Socket),
-    validate_handshake(HandshakeResponse, Key),
-    ok.
+    case  receive_handshake(<<>>, Transport, Socket) of
+        {ok, HandshakeResponse} ->
+            validate_handshake(HandshakeResponse, Key),
+            ok;
+        {error, _} = Error ->
+            Error
+    end.
 
 %% @doc Blocks and waits until handshake response data is received
 -spec receive_handshake(Buffer :: binary(),
                         Transport :: module(),
                         Socket :: term()) ->
     {ok, binary()}.
-receive_handshake(Buffer, Transport, Socket) ->
+receive_handshake(<<>>, Transport, Socket) ->
+    {ok, Data} = Transport:recv(Socket, 0, 6000),
+    receive_handshake(Data, Transport, Socket);
+receive_handshake(<<"HTTP/1.1 101", _/binary>> = Buffer, Transport, Socket) ->
+    error_logger:error_msg("receive_handshake:Buffer:~p~n", [Buffer]),
+    
     case re:run(Buffer, ".*\\r\\n\\r\\n") of
         {match, _} ->
             {ok, Buffer};
@@ -149,7 +158,10 @@ receive_handshake(Buffer, Transport, Socket) ->
             {ok, Data} = Transport:recv(Socket, 0, 6000),
             receive_handshake(<< Buffer/binary, Data/binary >>,
                               Transport, Socket)
-    end.
+    end;
+receive_handshake(<<"HTTP/1.1 ", Status:3/binary, _/binary>>, _, _) ->
+    {error, Status}.
+
 
 %% @doc Main loop
 -spec websocket_loop(WSReq :: websocket_req:req(), HandlerState :: any(),
