@@ -81,7 +81,6 @@ ws_client_init(Handler, Protocol, Host, Port, Path, Args) ->
         proc_lib:init_ack(ConnectError),
         exit(normal)
     end,
-    proc_lib:init_ack({ok, self()}),
     WSReq = websocket_req:new(
       Protocol,
       Host,
@@ -92,7 +91,13 @@ ws_client_init(Handler, Protocol, Host, Port, Path, Args) ->
       Handler,
       generate_ws_key()
     ),
-    ok = websocket_handshake(WSReq),
+    case websocket_handshake(WSReq) of
+        ok -> ok;
+        {error, _} = HandshakeError ->
+            proc_lib:init_ack(HandshakeError),
+            exit(normal)
+    end,
+    proc_lib:init_ack({ok, self()}),
     case Socket of
         {sslsocket, _, _} ->
             ssl:setopts(Socket, [{active, true}]);
@@ -149,8 +154,6 @@ receive_handshake(<<>>, Transport, Socket) ->
     {ok, Data} = Transport:recv(Socket, 0, 6000),
     receive_handshake(Data, Transport, Socket);
 receive_handshake(<<"HTTP/1.1 101", _/binary>> = Buffer, Transport, Socket) ->
-    error_logger:error_msg("receive_handshake:Buffer:~p~n", [Buffer]),
-    
     case re:run(Buffer, ".*\\r\\n\\r\\n") of
         {match, _} ->
             {ok, Buffer};
