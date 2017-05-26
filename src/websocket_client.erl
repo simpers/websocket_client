@@ -144,17 +144,17 @@ start_link(FsmName, URL, Handler, HandlerArgs, Opts) when is_list(Opts) ->
     end.
 
 fsm_start_link(undefined, Args, Options) ->
-    gen_fsm:start_link(?MODULE, Args, Options);
+    gen_statem:start(?MODULE, Args, Options);
 fsm_start_link(FsmName, Args, Options) ->
-    gen_fsm:start_link(FsmName, ?MODULE, Args, Options).
+    gen_statem:start(FsmName, ?MODULE, Args, Options).
 
 send(Client, Frame) ->
-    gen_fsm:sync_send_event(Client, {send, Frame}).
+    gen_statem:sync_cast(Client, {send, Frame}).
 
 %% Send a frame asynchronously
 -spec cast(Client :: pid(), websocket_req:frame()) -> ok.
 cast(Client, Frame) ->
-    gen_fsm:send_event(Client, {cast, Frame}).
+    gen_statem:cast(Client, {cast, Frame}).
 
 -spec init(list(any())) ->
     {ok, state_name(), #context{}}.
@@ -189,7 +189,7 @@ init([Protocol, Host, Port, Path, Handler, HandlerArgs, Opts]) ->
                   handler   = {Handler, HState},
                   reconnect = Reconnect
                  },
-    Connect andalso gen_fsm:send_event(self(), connect),
+    Connect andalso gen_statem:cast(self(), connect),
     {ok, disconnected, Context0}.
 
 -spec transport(ws | wss, {verify | verify_fun, term()},
@@ -278,7 +278,7 @@ disconnect(Reason, #context{
         {ok, HState1} ->
             {next_state, disconnected, Context#context{buffer = <<>>, handler={Handler, HState1}}};
         {reconnect, HState1} ->
-            ok = gen_fsm:send_event(self(), connect),
+            ok = gen_statem:cast(self(), connect),
             {next_state, disconnected, Context#context{handler={Handler, HState1}}};
         {close, Reason1, HState1} ->
             ok = websocket_close(WSReq0, Handler, HState1, Reason1),
